@@ -1,43 +1,37 @@
-"use client"
+// Description: This component represents a Kanban column, displaying tasks and allowing for task management.
 
-import { useState } from "react"
-import { CalendarIcon, X } from "lucide-react"
-import { format } from "date-fns"
-
-import { Card, CardContent } from "./ui/card"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import { Textarea } from "./ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
-import { Calendar } from "./ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
-import { useToast } from "./ui/use-toast"
-
-import { addTaskToFirestore } from "../lib/firebase"
+"use client";
+import { useState } from "react";
+import { CalendarIcon, X } from "lucide-react";
+import { format } from "date-fns";
+import { Card, CardContent } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Calendar } from "./ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { toast } from "sonner";
 
 function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [priority, setPriority] = useState("medium")
-  const [dueDate, setDueDate] = useState(undefined)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { toast } = useToast()
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("medium");
+  const [dueDate, setDueDate] = useState(undefined);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!title.trim()) {
-      toast({
-        title: "Title required",
-        description: "Please enter a task title",
-        variant: "destructive",
-      })
-      return
+      toast.error("Please enter a task title.");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     const newTask = {
+      id: `task-${Date.now()}`, // Generate unique ID locally
       title,
       description: description || "",
       completed: false,
@@ -49,68 +43,54 @@ function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
         name: "You",
         avatar: "/placeholder.svg?height=40&width=40",
       },
-    }
+    };
 
     try {
-      // Optimistic UI update
-      const tempId = `temp-${Date.now()}`
-      setColumns((prevColumns) =>
-        prevColumns.map((col) => {
+      // Update columns state and localStorage
+      setColumns((prevColumns) => {
+        const updatedColumns = prevColumns.map((col) => {
           if (col.id === columnId) {
             return {
               ...col,
-              tasks: [...(col.tasks || []), { ...newTask, id: tempId }],
-            }
+              tasks: [...(col.tasks || []), newTask],
+            };
           }
-          return col
-        }),
-      )
+          return col;
+        });
 
-      // Add to Firestore
-      const taskId = await addTaskToFirestore(newTask)
+        // Update localStorage
+        localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
+        return updatedColumns;
+      });
 
-      // Update with real ID
-      setColumns((prevColumns) =>
-        prevColumns.map((col) => {
-          if (col.id === columnId) {
-            return {
-              ...col,
-              tasks: col.tasks.map((t) => (t.id === tempId ? { ...t, id: taskId } : t)),
-            }
-          }
-          return col
-        }),
-      )
-
-      setIsAddingTask(false)
-      toast({
-        title: "Task added",
-        description: "Your new task has been created",
-      })
+      setIsAddingTask(false);
+      toast.success("Your new task has been created.");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add task. Please try again.",
-        variant: "destructive",
-      })
+      console.error("Error adding task:", error);
+      toast.error("Failed to add task. Please try again.");
 
-      // Remove temp task on error
-      setColumns((prevColumns) =>
-        prevColumns.map((col) => {
+      // Remove task on error
+      setColumns((prevColumns) => {
+        const updatedColumns = prevColumns.map((col) => {
           if (col.id === columnId) {
             return {
               ...col,
-              tasks: col.tasks.filter((t) => t.id !== `temp-${Date.now()}`),
-            }
+              tasks: col.tasks.filter((t) => t.id !== newTask.id),
+            };
           }
-          return col
-        }),
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+          return col;
+        });
 
+        // Update localStorage with reverted state
+        localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
+        return updatedColumns;
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ... rest of the component remains the same (return statement with JSX)
   return (
     <Card className="mb-3 border border-primary/20 shadow-sm backdrop-blur-sm bg-white/90 dark:bg-slate-800/90 rounded-xl overflow-hidden">
       <CardContent className="p-4">
@@ -122,7 +102,7 @@ function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="h-6 w-6 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 hover:cursor-pointer"
                 onClick={() => setIsAddingTask(false)}
               >
                 <X className="h-3 w-3" />
@@ -147,17 +127,17 @@ function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
 
             <div className="flex space-x-2">
               <Select value={priority} onValueChange={(value) => setPriority(value)}>
-                <SelectTrigger className="h-9 text-xs rounded-lg">
+                <SelectTrigger className="h-9 text-xs rounded-lg hover:cursor-pointer">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent className="rounded-lg">
-                  <SelectItem value="low" className="rounded-md">
+                  <SelectItem value="low" className="rounded-md p-2 hover:cursor-pointer">
                     Low
                   </SelectItem>
-                  <SelectItem value="medium" className="rounded-md">
+                  <SelectItem value="medium" className="rounded-md p-2 hover:cursor-pointer">
                     Medium
                   </SelectItem>
-                  <SelectItem value="high" className="rounded-md">
+                  <SelectItem value="high" className="rounded-md p-2 hover:cursor-pointer">
                     High
                   </SelectItem>
                 </SelectContent>
@@ -165,7 +145,7 @@ function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 text-xs justify-start rounded-lg">
+                  <Button variant="outline" size="sm" className="h-9 text-xs justify-start rounded-lg hover:cursor-pointer">
                     <CalendarIcon className="mr-2 h-3 w-3" />
                     {dueDate ? format(dueDate, "PPP") : "Set due date"}
                   </Button>
@@ -188,11 +168,16 @@ function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsAddingTask(false)}
-                className="rounded-lg"
+                className="rounded-lg hover:cursor-pointer"
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={isSubmitting} className="rounded-lg">
+              <Button 
+                type="submit" 
+                size="sm" 
+                disabled={isSubmitting} 
+                className="rounded-lg hover:cursor-pointer"
+              >
                 {isSubmitting ? "Adding..." : "Add Task"}
               </Button>
             </div>
@@ -200,7 +185,7 @@ function AddTaskForm({ columnId, setIsAddingTask, setColumns, tasksCount }) {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-export default AddTaskForm
+export default AddTaskForm;

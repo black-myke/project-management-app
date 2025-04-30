@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from "firebase/app"
+import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getFirestore,
   collection,
@@ -11,98 +11,106 @@ import {
   orderBy,
   getDocs,
   where,
-} from "firebase/firestore"
+} from "firebase/firestore";
 
-let firebaseApp
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDaPMwU_5GphfPHDi_zFgx0inLFE8feYkA",
+  authDomain: "kanban-app-project.firebaseapp.com",
+  projectId: "kanban-app-project",
+  storageBucket: "kanban-app-project.appspot.com",
+  messagingSenderId: "895396614709",
+  appId: "1:895396614709:web:e838329a67e2bbc095d77c",
+  measurementId: "G-MLPDFGML6Z",
+};
 
-export const initializeFirebase = async () => {
-  if (getApps().length > 0) {
-    return getApps()[0]
+// Declare app and db variables
+let app;
+let db;
+
+// ✅ Initialize Firebase lazily
+export const initializeFirebase = () => {
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
   }
+  db = getFirestore(app);
+  return app;
+};
 
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID",
-  }
-
-  firebaseApp = initializeApp(firebaseConfig)
-  return firebaseApp
-}
-
+// ✅ Fetch board data
 export const fetchBoardData = (callback) => {
-  const db = getFirestore()
-
-  // Get columns
-  const columnsQuery = query(collection(db, "columns"), orderBy("order"))
+  const columnsQuery = query(collection(db, "columns"), orderBy("order"));
 
   return onSnapshot(columnsQuery, async (columnsSnapshot) => {
     const columnsData = columnsSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       tasks: [],
-    }))
+    }));
 
-    // Get tasks for each column
-    const tasksQuery = query(collection(db, "tasks"))
-
-    const tasksSnapshot = await getDocs(tasksQuery)
+    const tasksSnapshot = await getDocs(collection(db, "tasks"));
     const tasksData = tasksSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
-    }))
+    }));
 
-    // Assign tasks to their columns
     columnsData.forEach((column) => {
-      column.tasks = tasksData.filter((task) => task.columnId === column.id).sort((a, b) => a.order - b.order)
-    })
+      column.tasks = tasksData
+        .filter((task) => task.columnId === column.id)
+        .sort((a, b) => a.order - b.order);
+    });
 
-    callback(columnsData)
-  })
-}
+    callback(columnsData);
+  });
+};
 
+// ✅ Column functions
 export const addColumnToFirestore = async (columnData) => {
-  const db = getFirestore()
-  const docRef = await addDoc(collection(db, "columns"), columnData)
-  return docRef.id
-}
+  const docRef = await addDoc(collection(db, "columns"), columnData);
+  return docRef.id;
+};
 
 export const updateColumnInFirestore = async (columnId, data) => {
-  const db = getFirestore()
-  await updateDoc(doc(db, "columns", columnId), data)
-}
+  await updateDoc(doc(db, "columns", columnId), data);
+};
 
 export const deleteColumnFromFirestore = async (columnId) => {
-  const db = getFirestore()
+  await deleteDoc(doc(db, "columns", columnId));
 
-  // Delete the column
-  await deleteDoc(doc(db, "columns", columnId))
+  const tasksQuery = query(collection(db, "tasks"), where("columnId", "==", columnId));
+  const tasksSnapshot = await getDocs(tasksQuery);
 
-  // Delete all tasks in the column
-  const tasksQuery = query(collection(db, "tasks"), where("columnId", "==", columnId))
+  const deletePromises = tasksSnapshot.docs.map((taskDoc) =>
+    deleteDoc(doc(db, "tasks", taskDoc.id))
+  );
 
-  const tasksSnapshot = await getDocs(tasksQuery)
+  await Promise.all(deletePromises);
+};
 
-  const deletePromises = tasksSnapshot.docs.map((taskDoc) => deleteDoc(doc(db, "tasks", taskDoc.id)))
-
-  await Promise.all(deletePromises)
-}
-
+// ✅ Task functions
 export const addTaskToFirestore = async (taskData) => {
-  const db = getFirestore()
-  const docRef = await addDoc(collection(db, "tasks"), taskData)
-  return docRef.id
-}
+  const docRef = await addDoc(collection(db, "tasks"), taskData);
+  return docRef.id;
+};
 
 export const updateTaskInFirestore = async (taskId, data) => {
-  const db = getFirestore()
-  await updateDoc(doc(db, "tasks", taskId), data)
-}
+  await updateDoc(doc(db, "tasks", taskId), data);
+};
 
 export const deleteTaskFromFirestore = async (taskId) => {
-  const db = getFirestore()
-  await deleteDoc(doc(db, "tasks", taskId))
-}
+  await deleteDoc(doc(db, "tasks", taskId));
+};
+
+// ✅ Export all together
+export default {
+  initializeFirebase,
+  fetchBoardData,
+  addColumnToFirestore,
+  updateColumnInFirestore,
+  deleteColumnFromFirestore,
+  addTaskToFirestore,
+  updateTaskInFirestore,
+  deleteTaskFromFirestore,
+};

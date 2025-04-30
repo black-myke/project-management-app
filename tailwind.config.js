@@ -2,12 +2,7 @@
 const config = {
     darkMode: ["class"],
     content: [
-      "./pages/**/*.{js,jsx}",
-      "./components/**/*.{js,jsx}",
-      "./app/**/*.{js,jsx}",
       "./src/**/*.{js,jsx}",
-      "*.{js,jsx,mdx}",
-      "*.{js,ts,jsx,tsx,mdx}",
     ],
     prefix: "",
     theme: {

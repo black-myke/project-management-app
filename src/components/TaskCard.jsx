@@ -1,9 +1,7 @@
-// Description: This component represents a Kanban column, displaying tasks and allowing for task management.
-
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Calendar, MoreHorizontal, Trash2 } from "lucide-react";
+import { Calendar, MoreHorizontal, Trash2, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 import { Card, CardContent } from "./ui/card";
@@ -13,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { toast } from "sonner";
 
-function TaskCard({ task, index, columnId, setColumns }) {
+function TaskCard({ task, index, columnId, setColumns, isDragging = false }) {
   const [isHovered, setIsHovered] = useState(false);
 
   const {
@@ -22,7 +20,6 @@ function TaskCard({ task, index, columnId, setColumns }) {
     setNodeRef,
     transform,
     transition,
-    isDragging,
   } = useSortable({
     id: task.id,
     data: {
@@ -36,10 +33,10 @@ function TaskCard({ task, index, columnId, setColumns }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   };
 
   const handleDeleteTask = (e) => {
+    e.preventDefault(); // Add this line
     e.stopPropagation();
 
     try {
@@ -48,13 +45,14 @@ function TaskCard({ task, index, columnId, setColumns }) {
           if (col.id === columnId) {
             return {
               ...col,
-              tasks: col.tasks.filter((t) => t.id !== task.id),
+              tasks: col.tasks
+                .filter((t) => t.id !== task.id)
+                .map((t, idx) => ({ ...t, order: idx })), // Add order update
             };
           }
           return col;
         });
 
-        // Update localStorage
         localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
         return updatedColumns;
       });
@@ -76,7 +74,6 @@ function TaskCard({ task, index, columnId, setColumns }) {
           return col;
         });
 
-        // Update localStorage with reverted state
         localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
         return updatedColumns;
       });
@@ -98,7 +95,6 @@ function TaskCard({ task, index, columnId, setColumns }) {
           return col;
         });
 
-        // Update localStorage
         localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
         return updatedColumns;
       });
@@ -108,7 +104,6 @@ function TaskCard({ task, index, columnId, setColumns }) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task status. Please try again.");
 
-      // Revert changes on error
       setColumns((prevColumns) => {
         const updatedColumns = prevColumns.map((col) => {
           if (col.id === columnId) {
@@ -122,14 +117,12 @@ function TaskCard({ task, index, columnId, setColumns }) {
           return col;
         });
 
-        // Update localStorage with reverted state
         localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
         return updatedColumns;
       });
     }
   };
 
-  // ... rest of the component remains the same (getPriorityColor, getPriorityBorderColor, and render methods)
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "high":
@@ -164,7 +157,7 @@ function TaskCard({ task, index, columnId, setColumns }) {
       {...listeners}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="mb-3 group"
+      className={`mb-3 group ${isDragging ? 'opacity-50' : ''}`}
     >
       <Card
         className={`border-l-2 ${getPriorityBorderColor(task.priority)} shadow-sm ${
@@ -221,7 +214,7 @@ function TaskCard({ task, index, columnId, setColumns }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40 rounded-xl">
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive rounded-lg"
+                  className="text-destructive focus:text-destructive rounded-lg hover:cursor-pointer"
                   onClick={handleDeleteTask}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -241,12 +234,10 @@ function TaskCard({ task, index, columnId, setColumns }) {
               {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
             </Badge>
 
-            {task.dueDate && (
+            {task.timeEstimate && (
               <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 px-2.5 py-1 rounded-full">
-                <Calendar className="h-3 w-3 mr-1" />
-                <span>
-                  {formatDistanceToNow(new Date(task.dueDate), { addSuffix: true })}
-                </span>
+                <Clock className="h-3 w-3 mr-1" />
+                <span>{task.timeEstimate.formatted}</span>
               </div>
             )}
 

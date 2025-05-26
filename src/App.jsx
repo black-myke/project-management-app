@@ -36,6 +36,27 @@ function App() {
     })
   );
 
+  // useEffect(() => {
+  //   const loadFromLocalStorage = () => {
+  //     try {
+  //       const savedColumns = localStorage.getItem("kanbanColumns");
+  //       if (savedColumns) {
+  //         setColumns(JSON.parse(savedColumns));
+  //       } else {
+  //         setColumns([]); // Set empty array if no data
+  //       }
+  //     } catch (error) {
+  //       console.error("Error loading data:", error);
+  //       toast.error("Failed to load data. Please refresh the page.");
+  //       setColumns([]); // Set empty array on error
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   loadFromLocalStorage();
+  // }, []);
+
   useEffect(() => {
     const loadFromLocalStorage = () => {
       try {
@@ -53,9 +74,15 @@ function App() {
         setLoading(false);
       }
     };
-
+  
     loadFromLocalStorage();
-  }, []);
+  }, []); // <--- THIS [] IS CRITICAL!
+
+  // useEffect(() => {
+  //   if (!loading) {
+  //     localStorage.setItem("kanbanColumns", JSON.stringify(columns));
+  //   }
+  // }, [columns, loading]);
 
   useEffect(() => {
     if (!loading) {

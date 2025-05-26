@@ -44,7 +44,7 @@ function KanbanColumn({ column, tasks, setColumns, isDragging }) {
     e.preventDefault();
     e.stopPropagation();
 
-    // Close dropdown immediately
+    // If dropdownRef supports close, call it
     if (dropdownRef.current?.close) {
       dropdownRef.current.close();
     }
@@ -56,12 +56,9 @@ function KanbanColumn({ column, tasks, setColumns, isDragging }) {
           .filter((col) => col.id !== column.id)
           .map((col, index) => ({ ...col, order: index }));
 
-        // Update localStorage synchronously
         window.localStorage.setItem("kanbanColumns", JSON.stringify(updatedColumns));
         
-        // Show success message immediately
         toast.success(`Column "${column.title}" deleted`);
-
         return updatedColumns;
       } catch (error) {
         console.error("Error deleting column:", error);
@@ -77,20 +74,16 @@ function KanbanColumn({ column, tasks, setColumns, isDragging }) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex-shrink-0 w-80 ${isDragging ? 'opacity-50' : ''}`}
+      className={`flex-shrink-0 w-80 ${isDragging ? "opacity-50" : ""}`}
     >
       <Card
         className={`h-full backdrop-blur-md bg-white/80 dark:bg-slate-800/70 border-t-2 border-t-white/50 shadow-lg hover:shadow-xl transition-all duration-300 ${
           isDragging ? "rotate-1 scale-[1.02]" : ""
         }`}
       >
-        <CardHeader
-          className="p-4 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r from-white/20 to-transparent dark:from-white/5 dark:to-transparent rounded-t-lg"
-        >
+        <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r from-white/20 to-transparent dark:from-white/5 dark:to-transparent rounded-t-lg">
           <div className="flex items-center space-x-2">
-            <h3 className="font-medium text-lg text-gray-800 dark:text-gray-100">
-              {column.title}
-            </h3>
+            <h3 className="font-medium text-lg text-gray-800 dark:text-gray-100">{column.title}</h3>
             <span className="bg-white/30 text-gray-800 dark:bg-gray-700 dark:text-gray-300 text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
               {tasks.length}
             </span>
@@ -107,14 +100,11 @@ function KanbanColumn({ column, tasks, setColumns, isDragging }) {
                 <span className="sr-only">Column menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-              ref={dropdownRef}
-              align="end" 
-              className="w-48 rounded-xl"
-            >
+            <DropdownMenuContent ref={dropdownRef} align="end" className="w-48 rounded-xl">
               <DropdownMenuItem
-                onSelect={(e) => {
+                onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleDeleteColumn(e);
                 }}
                 className="text-destructive focus:text-destructive rounded-lg hover:cursor-pointer hover:bg-destructive/10"
@@ -126,20 +116,11 @@ function KanbanColumn({ column, tasks, setColumns, isDragging }) {
         </CardHeader>
 
         <CardContent className="p-3 min-h-[300px] transition-colors duration-200">
-          <SortableContext
-            items={tasks.map((task) => task.id)}
-            strategy={verticalListSortingStrategy}
-          >
+          <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
             {tasks
               .sort((a, b) => (a.order || 0) - (b.order || 0))
               .map((task, index) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  index={index}
-                  columnId={column.id}
-                  setColumns={setColumns}
-                />
+                <TaskCard key={task.id} task={task} index={index} columnId={column.id} setColumns={setColumns} />
               ))}
           </SortableContext>
 
@@ -155,9 +136,7 @@ function KanbanColumn({ column, tasks, setColumns, isDragging }) {
               <div className="w-16 h-16 rounded-full bg-white/20 dark:bg-gray-800 flex items-center justify-center mb-3 backdrop-blur-sm">
                 <Plus className="h-6 w-6 text-gray-600 dark:text-gray-400" />
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                No tasks in this column
-              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">No tasks in this column</p>
               <Button
                 variant="outline"
                 size="sm"
